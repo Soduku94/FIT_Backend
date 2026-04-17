@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from app.models.user_model import User
 
-from app.models.document_model import Document, Category
+from app.models.resource_model import Paper, Dataset, Category
 from app.utils.auth_middleware import admin_required
 from app.extensions import db
 from sqlalchemy import func
@@ -17,8 +17,8 @@ def get_dashboard_stats(current_user):
 
     try:
         # 1. Đếm số liệu tổng quan cho 4 thẻ (Cards)
-        total_docs = Document.query.count()
-        pending_docs = Document.query.filter_by(status='pending').count()
+        total_docs = Paper.query.count() + Dataset.query.count()
+        pending_docs = Paper.query.filter_by(status='pending').count() + Dataset.query.filter_by(status='pending').count()
         total_users = User.query.count()
 
         # (Nếu bảng Document của bạn chưa có cột views/downloads thì trả về 0 tạm)
@@ -26,10 +26,11 @@ def get_dashboard_stats(current_user):
 
         # 2. Thống kê số bài báo theo từng Danh mục (Cho Biểu đồ cột)
         # Câu lệnh SQL: SELECT category.name, COUNT(document.id) ...
+        # (Assuming we only count papers for now, or you could do a union. Let's count papers for category stats as an example)
         category_stats = db.session.query(
             Category.name,
-            func.count(Document.id)
-        ).outerjoin(Document, Category.id == Document.category_id).group_by(Category.name).all()
+            func.count(Paper.id)
+        ).outerjoin(Paper, Category.id == Paper.category_id).group_by(Category.name).all()
 
         # Biến đổi dữ liệu cho đúng định dạng của Recharts Frontend
         category_data = [{"name": cat[0], "count": cat[1]} for cat in category_stats]

@@ -1,7 +1,7 @@
 from flask import request, jsonify
-from app.models.document_model import Document
+from app.models.resource_model import Paper, Dataset, Category
 from sqlalchemy import or_
-from app.models.document_model import Category
+from datetime import datetime
 # Import Blueprint của public (ta sẽ tạo ở bước 2)
 from . import public_bp
 
@@ -12,54 +12,86 @@ from app.extensions import db
 # ==========================================
 @public_bp.route('/documents', methods=['GET'])
 def get_public_documents():
-    # 1. Luôn luôn khóa chặt điều kiện: Chỉ lấy bài đã được duyệt
-    query = Document.query.filter_by(status='approved')
+    try:
+        search_keyword = request.args.get('search')
+        category_id = request.args.get('category_id')
 
-    # 2. Xử lý tính năng Tìm kiếm (Search) nếu có
-    search_keyword = request.args.get('search')
-    if search_keyword:
-        # Tìm kiếm tương đối (LIKE) trong Tiêu đề HOẶC Tóm tắt
-        search_term = f"%{search_keyword}%"
-        query = query.filter(
-            or_(
-                Document.title.ilike(search_term),
-                Document.description.ilike(search_term)
+        # Query Papers
+        paper_query = Paper.query.filter_by(status='approved')
+        if search_keyword:
+            search_term = f"%{search_keyword}%"
+            paper_query = paper_query.filter(
+                or_(
+                    Paper.title.ilike(search_term),
+                    Paper.description.ilike(search_term)
+                )
             )
-        )
+        if category_id:
+            paper_query = paper_query.filter_by(category_id=category_id)
+            
+        papers = paper_query.all()
 
-    # Lọc theo danh mục (nếu user click vào một chuyên ngành)
-    category_id = request.args.get('category_id')
-    if category_id:
-        query = query.filter_by(category_id=category_id)
+        # Query Datasets
+        dataset_query = Dataset.query.filter_by(status='approved')
+        if search_keyword:
+            search_term = f"%{search_keyword}%"
+            dataset_query = dataset_query.filter(
+                or_(
+                    Dataset.title.ilike(search_term),
+                    Dataset.description.ilike(search_term)
+                )
+            )
+        if category_id:
+            dataset_query = dataset_query.filter_by(category_id=category_id)
 
-    # 3. Thực thi query, xếp bài mới nhất lên đầu
-    documents = query.order_by(Document.created_at.desc()).all()
+        datasets = dataset_query.all()
 
-    # 4. Format dữ liệu trả về (TUYỆT ĐỐI BẢO MẬT LINK FILE)
-    result = []
-    for doc in documents:
-        result.append({
-            "id": doc.id,
-            "title": doc.title,
-            "doc_type": "Bài báo khoa học" if doc.doc_type == 'paper' else "Dataset",
-            "description": doc.description, # Chỉ cho xem tóm tắt
-            "authors": doc.authors,
-            "category_name": doc.category.name if doc.category else "Không có",
-            "tags": [tag.name for tag in doc.tags],
-            "view_count": doc.view_count,
-            "created_at": doc.created_at.strftime('%Y-%m-%d'),
-            # Trả về cờ hiệu để Frontend biết mà vẽ nút "Tải PDF" hay "Link ngoài"
-            "has_pdf": bool(doc.main_file_url),
-            "has_external_link": bool(doc.external_link)
-            # LƯU Ý: Không có main_file_url hay attachments ở đây!
-        })
+        all_docs = []
+        categories_dict = {cat.id: cat.name for cat in Category.query.all()}
 
-    return jsonify({
-        "message": "Danh sách tài liệu công khai",
-        "total": len(result),
-        "documents": result
-    }), 200
+        for doc in papers:
+            all_docs.append({
+                "id": doc.id,
+                "title": doc.title,
+                "doc_type": "Bài báo khoa học",
+                "description": doc.description,
+                "authors": doc.authors if doc.authors else [],
+                "category_name": categories_dict.get(doc.category_id, "Không có"),
+                "tags": doc.tags if doc.tags else [],
+                "view_count": doc.view_count,
+                "created_at": doc.created_at,
+                "has_pdf": bool(doc.file_url),
+                "has_external_link": bool(doc.doi)
+            })
 
+        for doc in datasets:
+            all_docs.append({
+                "id": doc.id,
+                "title": doc.title,
+                "doc_type": "Dataset",
+                "description": doc.description,
+                "authors": doc.authors if doc.authors else [],
+                "category_name": categories_dict.get(doc.category_id, "Không có"),
+                "tags": doc.tags if doc.tags else [],
+                "view_count": doc.view_count,
+                "created_at": doc.created_at,
+                "has_pdf": bool(doc.file_url),
+                "has_external_link": bool(doc.github_url)
+            })
+
+        all_docs.sort(key=lambda x: x["created_at"] or datetime.min, reverse=True)
+
+        for doc in all_docs:
+            doc["created_at"] = doc["created_at"].strftime('%Y-%m-%d') if doc["created_at"] else ""
+
+        return jsonify({
+            "message": "Danh sách tài liệu công khai",
+            "total": len(all_docs),
+            "documents": all_docs
+        }), 200
+    except Exception as e:
+        print(f"LỖI LẤY DANH SÁCH TÀI LIỆU: {str(e)}")
+        return jsonify({"message": "Lỗi máy chủ"}), 500
 
 # ==========================================
 # API: XEM CHI TIẾT TÀI LIỆU VÀ TĂNG LƯỢT XEM
@@ -67,14 +99,21 @@ def get_public_documents():
 @public_bp.route('/documents/<string:doc_id>', methods=['GET'])
 def get_document_detail(doc_id):
     try:
-        # Tìm bài báo theo ID
-        doc = Document.query.get(doc_id)
+        doc = Paper.query.get(doc_id)
+        doc_type_str = "Bài báo khoa học"
+        external_link_attr = None
+        
+        if doc:
+            external_link_attr = doc.doi
+        else:
+            doc = Dataset.query.get(doc_id)
+            doc_type_str = "Dataset"
+            if doc:
+                external_link_attr = doc.github_url
 
-        # Nếu không thấy, hoặc bài đó chưa được Admin duyệt thì báo lỗi 404
         if not doc or doc.status != 'approved':
             return jsonify({"message": "Tài liệu không tồn tại hoặc chưa được công khai!"}), 404
 
-        # TĂNG LƯỢT XEM LÊN 1
         increase_view = request.args.get('increase_view')
 
         if increase_view == 'true':
@@ -82,20 +121,21 @@ def get_document_detail(doc_id):
                 doc.view_count = 0
             doc.view_count += 1
             db.session.commit()
+            
+        category = db.session.get(Category, doc.category_id)
 
-        # Format dữ liệu trả về (Lấy chuẩn theo model của bạn)
         result = {
             "id": doc.id,
             "title": doc.title,
-            "doc_type": "Bài báo khoa học" if doc.doc_type == 'paper' else "Dataset",
+            "doc_type": doc_type_str,
             "description": doc.description,
-            "authors": doc.authors,
-            "category_name": doc.category.name if doc.category else "Không có",
-            "tags": [tag.name for tag in doc.tags],
+            "authors": doc.authors if doc.authors else [],
+            "category_name": category.name if category else "Không có",
+            "tags": doc.tags if doc.tags else [],
             "view_count": doc.view_count,
             "created_at": doc.created_at.strftime('%d/%m/%Y') if doc.created_at else "",
-            "file_url": doc.main_file_url,
-            "external_link": doc.external_link
+            "file_url": doc.file_url,
+            "external_link": external_link_attr
         }
 
         return jsonify({
@@ -109,9 +149,9 @@ def get_document_detail(doc_id):
 
 @public_bp.route('/categories', methods=['GET'])
 def get_public_categories():
-        try:
-            categories = Category.query.all()
-            result = [{"id": cat.id, "name": cat.name} for cat in categories]
-            return jsonify({"categories": result}), 200
-        except Exception as e:
-            return jsonify({"message": "Lỗi khi lấy danh mục"}), 500
+    try:
+        categories = Category.query.all()
+        result = [{"id": cat.id, "name": cat.name} for cat in categories]
+        return jsonify({"categories": result}), 200
+    except Exception as e:
+        return jsonify({"message": "Lỗi khi lấy danh mục"}), 500

@@ -17,7 +17,7 @@ def create_app(config_class=Config):
     # IMPORT MODEL
     # ==========================================
     from app.models import user_model
-    from app.models import document_model
+    from app.models import resource_model
     from app.routes.client import profile_routes
     # ==========================================
     # IMPORT VÀ ĐĂNG KÝ CÁC BLUEPRINT (API ROUTES)

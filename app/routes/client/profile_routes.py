@@ -1,6 +1,6 @@
 from flask import jsonify, request
 from app.models.user_model import User
-from app.models.document_model import Document
+from app.models.resource_model import Paper, Dataset
 from app.utils.auth_middleware import token_required
 from app.extensions import db
 
@@ -27,8 +27,9 @@ def get_my_profile(current_user):
         }
 
         my_documents = []
-        docs = Document.query.filter_by(uploader_id=current_user.id).all()
-        for d in docs:
+        docs = Paper.query.filter_by(uploader_id=current_user.id).all()
+        datasets = Dataset.query.filter_by(uploader_id=current_user.id).all()
+        for d in docs + datasets:
             my_documents.append({
                 "id": d.id,
                 "title": d.title,

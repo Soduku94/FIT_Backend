@@ -34,3 +34,8 @@ Thumbs.db
 # Project specific: File upload từ người dùng
 app/storage/uploads/
 uploads/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

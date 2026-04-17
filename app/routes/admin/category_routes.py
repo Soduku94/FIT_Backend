@@ -1,5 +1,5 @@
 from flask import request, jsonify
-from app.models.document_model import Category
+from app.models.resource_model import Category
 from app.extensions import db
 from app.utils.auth_middleware import admin_required, token_required
 

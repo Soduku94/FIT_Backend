@@ -1,5 +1,5 @@
 from flask import request, jsonify
-from app.models.document_model import Document, Category
+from app.models.resource_model import Paper, Dataset, Category
 from app.extensions import db
 from app.utils.auth_middleware import admin_required
 
@@ -17,19 +17,19 @@ def get_all_documents(current_user):
     # Lấy tham số trạng thái từ URL (VD: ?status=pending)
     status_filter = request.args.get('status')
 
-    query = Document.query
+    query = Paper.query
     if status_filter:
         query = query.filter_by(status=status_filter)
 
     # Xếp bài mới nhất lên đầu để Admin duyệt trước
-    documents = query.order_by(Document.created_at.desc()).all()
+    documents = query.order_by(Paper.created_at.desc()).all()
 
     result = []
     for doc in documents:
         result.append({
             "id": doc.id,
             "title": doc.title,
-            "doc_type": "Bài báo khoa học" if doc.doc_type == 'paper' else "Dataset",
+            "doc_type": "Bài báo khoa học", # Since we are only querying Paper for now
             "category_name": doc.category.name if doc.category else "Không có",
             "uploader_id": doc.uploader_id,
             "status": doc.status,
@@ -83,7 +83,7 @@ def get_pending_documents(current_user):
         return jsonify({"message": "CORS preflight OK"}), 200
 
     # Lấy các bài có status là 'pending' (chờ duyệt)
-    docs = Document.query.filter_by(status='pending').order_by(Document.created_at.desc()).all()
+    docs = Paper.query.filter_by(status='pending').order_by(Paper.created_at.desc()).all()
 
     result = []
     for d in docs:
@@ -127,7 +127,7 @@ def review_document(current_user, doc_id):
     if new_status not in ['approved', 'rejected']:
         return jsonify({"message": "Trạng thái không hợp lệ!"}), 400
 
-    doc = Document.query.get(doc_id)
+    doc = Paper.query.get(doc_id)
     if not doc:
         return jsonify({"message": "Không tìm thấy tài liệu!"}), 404
 

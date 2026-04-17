@@ -2,7 +2,7 @@ import os
 import time
 from flask import request, jsonify
 from werkzeug.utils import secure_filename
-from app.models.document_model import Document
+from app.models.resource_model import Paper, Dataset
 from app.utils.auth_middleware import token_required
 from app.extensions import db
 from app.routes.auth import auth_bp
@@ -51,16 +51,26 @@ def upload_document(current_user):
             # 3. Lưu thông tin vào Database (Trạng thái mặc định là 'pending')
             file_url = f"http://127.0.0.1:5000/uploads/{unique_filename}"
 
-            new_doc = Document(
-                title=title,
-                description=description,
-                category_id=category_id,
-                doc_type=doc_type,
-                authors=authors,
-                uploader_id=current_user.id,
-                status='pending',  # CHỜ ADMIN DUYỆT
-                main_file_url=file_url
-            )
+            if doc_type == 'dataset':
+                new_doc = Dataset(
+                    title=title,
+                    description=description,
+                    category_id=category_id,
+                    authors=authors,
+                    uploader_id=current_user.id,
+                    status='pending',
+                    file_url=file_url
+                )
+            else:
+                new_doc = Paper(
+                    title=title,
+                    description=description,
+                    category_id=category_id,
+                    authors=authors,
+                    uploader_id=current_user.id,
+                    status='pending',  # CHỜ ADMIN DUYỆT
+                    file_url=file_url
+                )
             db.session.add(new_doc)
             db.session.commit()
 

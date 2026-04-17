@@ -1,6 +1,6 @@
 import os
 from flask import request, jsonify, send_file
-from app.models.document_model import Document
+from app.models.resource_model import Paper, Dataset
 from app.extensions import db
 from app.utils.auth_middleware import token_required
 
@@ -15,7 +15,10 @@ from . import student_bp
 @token_required  # Chốt chặn số 1: Bắt buộc phải có Token hợp lệ
 def download_document(current_user, document_id):
     # 1. Tìm tài liệu trong DB
-    doc = Document.query.get(document_id)
+    doc = Paper.query.get(document_id)
+    if not doc:
+        # Check dataset ? Assuming document_id means paper for now
+        doc = Dataset.query.get(document_id)
     if not doc:
         return jsonify({"message": "Không tìm thấy tài liệu!"}), 404
 
@@ -28,8 +31,8 @@ def download_document(current_user, document_id):
     if not (is_approved or is_admin or is_author):
         return jsonify({"message": "Tài liệu này chưa được phê duyệt để tải xuống!"}), 403
 
-    # 3. Kiểm tra xem tài liệu này có file PDF vật lý không
-    if doc.doc_type != 'paper' or not doc.main_file_url:
+    # 3. Kiểm tra xem tài liệu này có file không
+    if not getattr(doc, 'file_url', None):
         return jsonify({"message": "Tài liệu này không có file đính kèm chính!"}), 404
 
     # 4. Xác định đường dẫn vật lý trên ổ cứng
@@ -38,7 +41,7 @@ def download_document(current_user, document_id):
     base_dir = os.getcwd()
 
     # Cắt bỏ dấu '/' ở đầu chuỗi đi để os.path.join hoạt động chính xác
-    relative_path = doc.main_file_url.lstrip('/')
+    relative_path = doc.file_url.lstrip('/')
 
     # Đường dẫn thực tế sẽ kiểu như: D:\FIT_Backend\app\storage\uploads\xyz_file.pdf
     file_path = os.path.join(base_dir, 'app', relative_path)
