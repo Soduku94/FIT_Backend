@@ -31,7 +31,7 @@ def admin_required(f):
 
             current_user = User.query.get(user_id)
 
-            if not current_user or current_user.role != 'admin':
+            if not current_user or current_user.role.value != 'admin':
                 return jsonify({'message': 'Bạn không có quyền quản trị!'}), 403
 
         except jwt.ExpiredSignatureError:

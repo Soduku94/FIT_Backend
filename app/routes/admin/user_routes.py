@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import or_
 
-from app.models.user_model import User
+from app.models.user_model import User, UserRole
 from app.extensions import db
 from app.utils.auth_middleware import admin_required
 
@@ -33,7 +33,10 @@ def get_all_users(current_user):
 
     # 1. Lọc theo role (nếu có)
     if role_filter:
-        query = query.filter_by(role=role_filter)
+        try:
+            query = query.filter_by(role=UserRole(role_filter))
+        except ValueError:
+            pass
 
     # 2. Tìm kiếm theo từ khóa (full_name, email, user_code)
     if search_keyword:
@@ -57,7 +60,7 @@ def get_all_users(current_user):
             "user_code": user.user_code,
             "full_name": user.full_name,
             "email": user.email,
-            "role": user.role,
+            "role": user.role.value,
             "department": user.department,
             "class_name": user.class_name,
             "academic_title": getattr(user, 'academic_title', None),  # tránh lỗi nếu chưa có cột
@@ -109,7 +112,7 @@ def create_user(current_user):
         user_code=data['user_code'],
         email=data['email'],
         full_name=data['full_name'],
-        role=role,
+        role=UserRole(role),
         department=data.get('department'),
         class_name=class_name,
         academic_title=academic_title,
@@ -130,7 +133,7 @@ def create_user(current_user):
             "message": "Tạo người dùng thành công!",
             "default_password": default_password,
             "user_code": new_user.user_code,
-            "role": new_user.role
+            "role": new_user.role.value
         }), 201
 
     except Exception as e:
@@ -207,7 +210,8 @@ def update_user(current_user, user_id):
     # Cập nhật các trường cơ bản
     user.full_name = data.get('full_name', user.full_name)
     user.department = data.get('department', user.department)
-    user.role = data.get('role', user.role)
+    if 'role' in data:
+        user.role = UserRole(data['role'])
     user.bio = data.get('bio', user.bio)
 
     # Cho phép thay đổi trạng thái active
@@ -218,10 +222,10 @@ def update_user(current_user, user_id):
         user.is_active = data['is_active']
 
     # Xử lý logic theo role
-    if user.role == 'student':
+    if user.role.value == 'student':
         user.class_name = data.get('class_name', user.class_name)
         user.academic_title = None
-    elif user.role in ['lecturer', 'teacher']:
+    elif user.role.value in ['lecturer', 'teacher']:
         user.academic_title = data.get('academic_title', user.academic_title)
         user.class_name = None
 
@@ -236,7 +240,7 @@ def update_user(current_user, user_id):
             "user": {
                 "id": user.id,
                 "full_name": user.full_name,
-                "role": user.role,
+                "role": user.role.value,
                 "is_active": user.is_active
             }
         }), 200
@@ -282,10 +286,13 @@ def import_users_from_excel(current_user):
             user_code = str(row[0]).strip()
             full_name = str(row[1]).strip() if row[1] else "Chưa cập nhật"
             email = str(row[2]).strip()
-            role = str(row[3]).strip().lower() if row[3] else "student"
+            try:
+                role = UserRole(str(row[3]).strip().lower()) if row[3] else UserRole.STUDENT
+            except ValueError:
+                role = UserRole.STUDENT
             department = str(row[4]).strip() if row[4] else None
-            class_name = str(row[5]).strip() if row[5] and role == 'student' else None
-            academic_title = str(row[6]).strip() if row[6] and role == 'lecturer' else None
+            class_name = str(row[5]).strip() if row[5] and role.value == 'student' else None
+            academic_title = str(row[6]).strip() if row[6] and role.value == 'lecturer' else None
 
             # Kiểm tra trùng lặp
             if User.query.filter_by(user_code=user_code).first():

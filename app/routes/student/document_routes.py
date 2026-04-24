@@ -17,7 +17,7 @@ def download_document(current_user, document_id):
     # 1. Tìm tài liệu trong DB
     doc = Paper.query.get(document_id)
     if not doc:
-        # Check dataset ? Assuming document_id means paper for now
+        # Check dataset? Assuming document_id means paper for now
         doc = Dataset.query.get(document_id)
     if not doc:
         return jsonify({"message": "Không tìm thấy tài liệu!"}), 404
@@ -25,7 +25,7 @@ def download_document(current_user, document_id):
     # 2. Chốt chặn số 2: Kiểm tra quyền tải
     # (Chỉ cho phép tải nếu bài đã duyệt, HOẶC người đang tải chính là Admin / Tác giả của bài đó)
     is_approved = doc.status == 'approved'
-    is_admin = current_user.role == 'admin'
+    is_admin = current_user.role.value == 'admin'
     is_author = doc.uploader_id == current_user.id
 
     if not (is_approved or is_admin or is_author):

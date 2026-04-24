@@ -8,10 +8,11 @@ from app.utils.auth_middleware import token_required
 import secrets
 import datetime
 
-
+from flask_mail import Mail, Message
 from . import auth_bp
 
-
+from flask_mail import Message
+from app.extensions import mail
 # 1. API Đăng nhập (Sinh JWT)
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -37,7 +38,7 @@ def login():
                 "id": user.id,
                 "user_code": user.user_code,
                 "full_name": user.full_name,
-                "role": user.role
+                "role": user.role.value
             }
         }), 200
 
@@ -67,7 +68,7 @@ def change_first_password(current_user):
     return jsonify({"message": "Đổi mật khẩu thành công! Tài khoản đã được kích hoạt."}), 200
 
 
-# 3. API Quên mật khẩu (Gửi Link về Email)
+# 3. API Quên mật khẩu (Gửi Link về Email thực tế)
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
     data = request.get_json()
@@ -77,37 +78,52 @@ def forgot_password():
     if not user_code or not email:
         return jsonify({"message": "Vui lòng nhập đầy đủ mã số và email!"}), 400
 
-    # Tìm user có khớp cả Mã số và Email không
     user = User.query.filter_by(user_code=user_code, email=email).first()
 
     if not user:
-        # Lưu ý bảo mật: Đôi khi người ta hay trả về "Email đã gửi" kể cả khi sai thông tin để tránh bị dò quét tài khoản.
-        # Nhưng ở môi trường nội bộ, báo lỗi rõ ràng sẽ giúp SV/GV dễ thao tác hơn.
         return jsonify({"message": "Thông tin mã số hoặc email không chính xác!"}), 404
 
-    # Sinh một chuỗi token ngẫu nhiên an toàn (64 ký tự)
     reset_token = secrets.token_urlsafe(32)
 
-    # Lưu token vào DB và set hạn sử dụng là 15 phút
     user.reset_token = reset_token
-    user.otp_expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    # ĐÃ SỬA: Dùng reset_token_expiry thay vì otp_expiry
+    user.reset_token_expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
     db.session.commit()
 
-    # TẠO LINK ĐỂ GỬI QUA EMAIL
-    # Ở thực tế, localhost:3000 sẽ là domain Frontend ReactJS của bạn
-    reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
+    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
 
-    # [TODO]: Tích hợp hệ thống gửi email thật (như Flask-Mail, SendGrid, Amazon SES)
-    # Tạm thời chúng ta sẽ in ra Terminal để test Backend:
-    print(f"\n[SYSTEM EMAIL MOCK]")
-    print(f"To: {email}")
-    print(f"Subject: Khôi phục mật khẩu FIT Research Hub")
-    print(f"Vui lòng click vào link sau để đổi mật khẩu (có hiệu lực trong 15 phút):")
-    print(f"{reset_link}\n")
+    try:
+        msg = Message(
+            subject="[FIT Research] Khôi phục mật khẩu tài khoản",
+            recipients=[email],
+            html=f"""
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px;">
+                    <h2 style="color: #2c3e50; text-align: center;">Khôi phục mật khẩu</h2>
+                    <hr style="border: 0; border-top: 1px solid #eee;">
+                    <p>Xin chào <strong>{user.full_name}</strong>,</p>
+                    <p>Chúng tôi đã nhận được yêu cầu khôi phục mật khẩu cho tài khoản có mã nhân viên: <span style="background: #f4f4f4; padding: 2px 5px; border-radius: 3px; font-family: monospace;">{user.user_code}</span>.</p>
+                    <p>Để thiết lập mật khẩu mới, vui lòng nhấn vào nút xác nhận bên dưới:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{reset_link}" style="background-color: #007bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Đổi mật khẩu ngay</a>
+                    </div>
+                    <p style="color: #e74c3c; font-size: 0.9em;"><strong>Lưu ý:</strong> Liên kết này sẽ hết hạn sau 15 phút vì lý do bảo mật.</p>
+                    <hr style="border: 0; border-top: 1px solid #eee;">
+                    <p style="font-size: 0.8em; color: #7f8c8d;">Nếu bạn không thực hiện yêu cầu này, hãy yên tâm bỏ qua email này. Tài khoản của bạn vẫn được bảo mật.</p>
+                    <p style="margin-top: 20px;">Trân trọng,<br>
+                    <strong>Đội ngũ FIT Research Hub</strong></p>
+                </div>
+                """
+        )
+        mail.send(msg)
+        return jsonify({"message": "Link khôi phục mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư của bạn!"}), 200
 
-    return jsonify(
-        {"message": "Link khôi phục mật khẩu đã được gửi vào email của bạn. Vui lòng kiểm tra hộp thư!"}), 200
-
+    except Exception as e:
+        print(f"LỖI GỬI MAIL: {str(e)}")
+        user.reset_token = None
+        # ĐÃ SỬA: Dùng reset_token_expiry
+        user.reset_token_expiry = None
+        db.session.commit()
+        return jsonify({"message": "Có lỗi từ máy chủ Email. Vui lòng thử lại sau!"}), 500
 
 # 4. API Đặt lại mật khẩu mới (Khi user click vào Link trong Email)
 @auth_bp.route('/reset-password', methods=['POST'])
@@ -119,20 +135,50 @@ def reset_password():
     if not token or not new_password or len(new_password) < 6:
         return jsonify({"message": "Dữ liệu không hợp lệ hoặc mật khẩu quá ngắn!"}), 400
 
-    # Tìm user sở hữu token này
     user = User.query.filter_by(reset_token=token).first()
 
-    # Kiểm tra xem token có tồn tại và còn hạn không
-    if not user or not user.otp_expiry or user.otp_expiry < datetime.datetime.utcnow():
+    # ĐÃ SỬA: Dùng reset_token_expiry thay vì otp_expiry
+    if not user or not user.reset_token_expiry or user.reset_token_expiry < datetime.datetime.utcnow():
         return jsonify({"message": "Link khôi phục không hợp lệ hoặc đã hết hạn!"}), 400
 
-    # Cập nhật mật khẩu mới
     user.set_password(new_password)
 
-    # Xóa token đi để link này không thể dùng lại được nữa
     user.reset_token = None
-    user.otp_expiry = None
+    # ĐÃ SỬA: Dùng reset_token_expiry
+    user.reset_token_expiry = None
 
     db.session.commit()
 
     return jsonify({"message": "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới."}), 200
+
+# 5. API Đổi mật khẩu (Dành cho user đang đăng nhập trong trang Profile)
+@auth_bp.route('/change-password', methods=['PUT', 'OPTIONS'])
+@token_required
+def change_password(current_user):
+    if request.method == 'OPTIONS':
+        return jsonify({"message": "OK"}), 200
+
+    data = request.get_json()
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+
+    if not old_password or not new_password:
+        return jsonify({"message": "Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới!"}), 400
+
+    # 1. Kiểm tra mật khẩu cũ có đúng không
+    if not current_user.check_password(old_password):
+        return jsonify({"message": "Mật khẩu cũ không chính xác!"}), 400
+
+    # 2. Kiểm tra độ dài mật khẩu mới
+    if len(new_password) < 6:
+        return jsonify({"message": "Mật khẩu mới phải có ít nhất 6 ký tự!"}), 400
+
+    # 3. Chống đổi mật khẩu mới trùng mật khẩu cũ (UX tốt)
+    if old_password == new_password:
+        return jsonify({"message": "Mật khẩu mới không được trùng với mật khẩu cũ!"}), 400
+
+    # 4. Cập nhật và lưu DB
+    current_user.set_password(new_password)
+    db.session.commit()
+
+    return jsonify({"message": "Đổi mật khẩu thành công!"}), 200

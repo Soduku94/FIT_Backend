@@ -21,7 +21,7 @@ def get_my_profile(current_user):
             "user_code": current_user.user_code,
             "full_name": current_user.full_name,
             "email": current_user.email,
-            "role": current_user.role,
+            "role": current_user.role.value,
             "department": current_user.department,
             "class_name": current_user.class_name
         }

@@ -1,9 +1,10 @@
 from flask import Flask
 from config import Config
-from app.extensions import db, migrate
+from app.extensions import db, migrate,mail
 from flask_cors import CORS
 from flask import Flask, send_from_directory
 import os
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     CORS(app)
@@ -12,13 +13,14 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     migrate.init_app(app, db)
-
+    mail.init_app(app)
     # ==========================================
     # IMPORT MODEL
     # ==========================================
     from app.models import user_model
     from app.models import resource_model
     from app.routes.client import profile_routes
+
     # ==========================================
     # IMPORT VÀ ĐĂNG KÝ CÁC BLUEPRINT (API ROUTES)
     # ==========================================
@@ -41,6 +43,9 @@ def create_app(config_class=Config):
     app.register_blueprint(student_bp)
 
     from app.routes.client import profile_routes
+
+    from app.routes.editor.news_routes import editor_bp
+    app.register_blueprint(editor_bp)
 
 
     # ==========================================

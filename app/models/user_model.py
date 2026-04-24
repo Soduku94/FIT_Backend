@@ -1,10 +1,15 @@
 import uuid
 from datetime import datetime
-
+import enum
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.extensions import db
 
+class UserRole(enum.Enum):
+    STUDENT = "student"
+    LECTURER = "lecturer"
+    ADMIN = "admin"
+    EDITOR = "editor"  # Role mới cho Quản trị nội dung
 
 class User(db.Model):
     """Model đại diện cho người dùng trong hệ thống (User)"""
@@ -75,11 +80,11 @@ class User(db.Model):
     # 3. PHÂN LOẠI & ĐƠN VỊ
     # ========================================
     role = db.Column(
-        db.String(20),
+        db.Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
-        default='student',
+        default=UserRole.STUDENT,
         index=True,
-        comment="Vai trò: student, lecturer, admin, staff..."
+        comment="Vai trò: student, lecturer, admin, editor"
     )
 
     department = db.Column(
