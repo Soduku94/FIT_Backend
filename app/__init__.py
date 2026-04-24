@@ -53,7 +53,7 @@ def create_app(config_class=Config):
     # ==========================================
     @app.cli.command("seed-db")
     def seed_db():
-        """Tạo tài khoản Admin và Student mẫu."""
+        """Tạo dữ liệu mẫu."""
         print("Đang khởi tạo dữ liệu mẫu...")
 
         # 1. Tạo tài khoản Admin
@@ -63,26 +63,26 @@ def create_app(config_class=Config):
                 user_code='admin_fit',
                 email='admin@fit.edu.vn',
                 full_name='Quản trị viên FIT',
-                role='admin',
+                role=user_model.UserRole.ADMIN,
                 department='Văn phòng Khoa'
             )
             admin.set_password('admin123')
             db.session.add(admin)
             print("- Đã tạo Admin: admin_fit / admin123")
 
-        # 2. Tạo tài khoản Giảng viên (Teacher)
+        # 2. Tạo tài khoản Giảng viên (Lecturer)
         teacher = user_model.User.query.filter_by(user_code='GV001').first()
         if not teacher:
             teacher = user_model.User(
                 user_code='GV001',
                 email='gv001@fit.edu.vn',
                 full_name='TS. Nguyễn Văn A',
-                role='teacher',
+                role=user_model.UserRole.LECTURER,
                 department='Bộ môn Hệ thống thông tin'
             )
             teacher.set_password('teacher123')
             db.session.add(teacher)
-            print("- Đã tạo Teacher: GV001 / teacher123")
+            print("- Đã tạo Teacher (Lecturer): GV001 / teacher123")
 
         # 3. Tạo tài khoản Sinh viên (Student)
         student = user_model.User.query.filter_by(user_code='20240001').first()
@@ -91,13 +91,27 @@ def create_app(config_class=Config):
                 user_code='20240001',
                 email='sv20240001@student.edu.vn',
                 full_name='Trần Thị Sinh Viên',
-                role='student',
+                role=user_model.UserRole.STUDENT,
                 department='Khoa CNTT',
                 class_name='K65-CNTT'
             )
             student.set_password('student123')
             db.session.add(student)
             print("- Đã tạo Student: 20240001 / student123")
+
+        # 4. Tạo tài khoản Biên tập viên (Editor)
+        editor = user_model.User.query.filter_by(user_code='ED001').first()
+        if not editor:
+            editor = user_model.User(
+                user_code='ED001',
+                email='editor001@fit.edu.vn',
+                full_name='Biên tập viên Nội dung',
+                role=user_model.UserRole.EDITOR,
+                department='Ban Truyền thông'
+            )
+            editor.set_password('editor123')
+            db.session.add(editor)
+            print("- Đã tạo Editor: ED001 / editor123")
 
         db.session.commit()
         print("Hoàn thành khởi tạo dữ liệu!")
