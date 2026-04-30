@@ -30,6 +30,7 @@ def upload_document(current_user):
         category_id = request.form.get('category_id')  # Tạm thời lấy ID chuyên ngành
         doc_type = request.form.get('doc_type')
         authors = request.form.get('authors')
+        citation = request.form.get('citation')  # MỚI: Trích dẫn học thuật
 
         # 2. Xử lý File đính kèm
         if 'file' not in request.files:
@@ -67,6 +68,7 @@ def upload_document(current_user):
                     description=description,
                     category_id=category_id,
                     authors=authors,
+                    citation=citation,  # MỚI: Lưu trích dẫn
                     uploader_id=current_user.id,
                     status='pending',  # CHỜ ADMIN DUYỆT
                     file_url=file_url

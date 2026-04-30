@@ -29,6 +29,7 @@ class Paper(db.Model):
     publication_year = db.Column(db.Integer, nullable=True)  # Năm xuất bản
     journal_name = db.Column(db.String(255), nullable=True)  # Tên tạp chí / Hội nghị
     doi = db.Column(db.String(100), nullable=True)  # Mã định danh tài liệu số (DOI)
+    citation = db.Column(db.Text, nullable=True)  # MỚI: Trích dẫn học thuật (APA, IEEE...)
 
     # --- File & Trạng thái ---
     file_url = db.Column(db.String(255), nullable=False)  # Link tải PDF
@@ -45,6 +46,9 @@ class Paper(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # --- AI Caching ---
+    ai_summary = db.Column(JSONB, nullable=True) # MỚI: Lưu kết quả tóm tắt từ AI
 
 
 # ==========================================
@@ -82,3 +86,6 @@ class Dataset(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # --- AI Caching ---
+    ai_summary = db.Column(JSONB, nullable=True) # MỚI: Lưu kết quả tóm tắt từ AI

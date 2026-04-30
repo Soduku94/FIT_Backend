@@ -37,6 +37,7 @@ def upload_paper(current_user):
     doi = request.form.get('doi')
     journal_name = request.form.get('journal_name')
     publication_year = request.form.get('publication_year')
+    citation = request.form.get('citation')  # MỚI
     if publication_year:
         publication_year = int(publication_year)
 
@@ -77,6 +78,7 @@ def upload_paper(current_user):
         doi=doi,  # MỚI
         journal_name=journal_name,  # MỚI
         publication_year=publication_year,  # MỚI
+        citation=citation,  # MỚI: Trích dẫn học thuật
         status=doc_status
     )
 
@@ -271,6 +273,7 @@ def get_my_document_detail(current_user, doc_id):
         result['doi'] = getattr(doc, 'doi', None)
         result['journal_name'] = getattr(doc, 'journal_name', None)
         result['publication_year'] = getattr(doc, 'publication_year', None)
+        result['citation'] = getattr(doc, 'citation', None)
     else:
         result['external_link'] = getattr(doc, 'github_url', None)
         result['file_size'] = getattr(doc, 'file_size', None)
@@ -329,6 +332,7 @@ def update_document(current_user, doc_id):
     if doc_type == 'paper':
         if 'doi' in request.form: doc.doi = request.form.get('doi')
         if 'journal_name' in request.form: doc.journal_name = request.form.get('journal_name')
+        if 'citation' in request.form: doc.citation = request.form.get('citation')  # MỚI
         if 'publication_year' in request.form:
             year = request.form.get('publication_year')
             doc.publication_year = int(year) if year else None

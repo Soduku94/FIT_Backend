@@ -45,3 +45,32 @@ def get_public_news():
     except Exception as e:
         print(f"LỖI LẤY TIN TỨC: {str(e)}")
         return jsonify({"message": "Lỗi máy chủ"}), 500
+
+# ==========================================
+# API: CHI TIẾT TIN TỨC / SỰ KIỆN (PUBLIC)
+# ==========================================
+@public_bp.route('/news/<id>', methods=['GET', 'OPTIONS'])
+def get_public_news_detail(id):
+    if request.method == 'OPTIONS':
+        return jsonify({"message": "OK"}), 200
+
+    try:
+        news_item = News.query.filter_by(id=id, status=NewsStatus.PUBLISHED).first()
+        if not news_item:
+            return jsonify({"message": "Không tìm thấy bài viết"}), 404
+
+        result = {
+            "id": news_item.id,
+            "title": news_item.title,
+            "content": news_item.content,
+            "category": news_item.category,
+            "thumbnail_url": news_item.thumbnail_url,
+            "created_at": news_item.created_at.strftime('%d/%m/%Y') if news_item.created_at else "",
+            "author_name": news_item.author.full_name if news_item.author else "Ban Quản Trị",
+        }
+
+        return jsonify({"message": "Chi tiết bài viết", "news": result}), 200
+
+    except Exception as e:
+        print(f"LỖI LẤY CHI TIẾT TIN TỨC: {str(e)}")
+        return jsonify({"message": "Lỗi máy chủ"}), 500
