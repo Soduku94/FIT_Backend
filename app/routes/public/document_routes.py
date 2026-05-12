@@ -38,6 +38,8 @@ def get_public_documents():
         categories_dict = {cat.id: cat.name for cat in Category.query.all()}
 
         # --- 2. Lọc bảng Bài báo (Paper) ---
+        paper_list = []
+        paper_total = 0
         if doc_type in ['all', 'paper']:
             paper_query = Paper.query.filter_by(status='approved')
             
@@ -57,9 +59,22 @@ def get_public_documents():
             if year:
                 paper_query = paper_query.filter_by(publication_year=year)
 
-            papers = paper_query.all()
+            paper_total = paper_query.count()
+            
+            # Sắp xếp
+            if sort_by == 'oldest':
+                paper_query = paper_query.order_by(Paper.created_at.asc())
+            elif sort_by == 'view':
+                paper_query = paper_query.order_by(Paper.view_count.desc())
+            else:
+                paper_query = paper_query.order_by(Paper.created_at.desc())
+
+            papers = paper_query.all() # Vì ta cần gộp với Dataset nên tạm thời vẫn lấy all nếu là 'all'
+            # Tuy nhiên nếu chỉ lấy paper thì ta có thể offset/limit ở đây.
+            # Để đơn giản và hỗ trợ trộn (mixed), ta vẫn giữ logic gộp nhưng tối ưu hơn.
+            
             for doc in papers:
-                all_docs.append({
+                paper_list.append({
                     "id": doc.id,
                     "title": doc.title,
                     "doc_type": "paper",
@@ -74,6 +89,8 @@ def get_public_documents():
                 })
 
         # --- 3. Lọc bảng Bộ dữ liệu (Dataset) ---
+        dataset_list = []
+        dataset_total = 0
         if doc_type in ['all', 'dataset']:
             dataset_query = Dataset.query.filter_by(status='approved')
             
@@ -89,13 +106,11 @@ def get_public_documents():
             if category_id:
                 dataset_query = dataset_query.filter_by(category_id=category_id)
             
-            # Dataset thường không có publication_year rõ ràng như Paper, 
-            # nhưng nếu user chọn năm, ta có thể lọc theo năm của created_at nếu cần.
-            # Hiện tại tạm để Year chỉ áp dụng cho Paper.
+            dataset_total = dataset_query.count()
 
             datasets = dataset_query.all()
             for doc in datasets:
-                all_docs.append({
+                dataset_list.append({
                     "id": doc.id,
                     "title": doc.title,
                     "doc_type": "dataset",
@@ -109,12 +124,13 @@ def get_public_documents():
                     "has_external_link": bool(getattr(doc, 'github_url', None))
                 })
 
-        # --- 4. Sắp xếp kết quả ---
+        # --- 4. Sắp xếp và Gộp ---
+        all_docs = paper_list + dataset_list
         if sort_by == 'oldest':
             all_docs.sort(key=lambda x: x["created_at"] or datetime.min)
         elif sort_by == 'view':
             all_docs.sort(key=lambda x: x["view_count"], reverse=True)
-        else: # newest (mặc định)
+        else: # newest
             all_docs.sort(key=lambda x: x["created_at"] or datetime.min, reverse=True)
 
         # --- 5. Phân trang ---
@@ -123,7 +139,7 @@ def get_public_documents():
         end_idx = start_idx + limit
         paginated_docs = all_docs[start_idx:end_idx]
 
-        # Định dạng lại ngày tháng để trả về
+        # Định dạng lại ngày tháng
         for doc in paginated_docs:
             if isinstance(doc["created_at"], datetime):
                 doc["created_at"] = doc["created_at"].strftime('%d/%m/%Y')

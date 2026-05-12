@@ -8,33 +8,8 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 def get_best_model(client):
-    """Tu dong tim model tot nhat trong danh sach kha dung"""
-    try:
-        available_models = [m.name for m in client.models.list()]
-        
-        # Thứ tự ưu tiên các model ổn định
-        priority = [
-            'models/gemini-2.0-flash',
-            'models/gemini-1.5-flash', 
-            'models/gemini-1.5-flash-latest', 
-            'models/gemini-flash-latest',
-            'models/gemini-pro',
-            'gemini-1.5-flash',
-        ]
-        
-        for p in priority:
-            if p in available_models:
-                return p
-        
-        # Nếu không có trong priority, tìm cái nào có chữ 'flash'
-        for m in available_models:
-            if 'flash' in m.lower() and 'preview' not in m.lower():
-                return m
-                
-        return 'models/gemini-1.5-flash'
-    except Exception as e:
-        print(f"Error finding model: {e}")
-        return 'models/gemini-1.5-flash'
+    """Mặc định dùng gemini-1.5-flash để tốc độ nhanh nhất. Chỉ list model nếu cần thiết."""
+    return 'gemini-1.5-flash'
 
 def generate_document_summary(document_title, document_description, file_path=None):
     if not GEMINI_API_KEY:

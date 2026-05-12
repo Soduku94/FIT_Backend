@@ -10,4 +10,5 @@ if __name__ == '__main__':
             print(f"Endpoint: {rule.endpoint:20} | URL: {rule}")
         print("----------------------------------------\n")
 
-    app.run(debug=True)
+    # Cho phép truy cập từ mạng nội bộ (host='0.0.0.0') để test mobile
+    app.run(debug=True, host='0.0.0.0', port=5000)
