@@ -60,6 +60,16 @@ def create_app(config_class=Config):
         from app.seeds import seed_all
         seed_all()
 
+    @app.cli.command("reset-db")
+    def reset_db():
+        """Xóa trắng toàn bộ database và tạo lại dữ liệu mẫu từ đầu."""
+        db.drop_all()
+        db.create_all()
+        print(">>> Da xoa sach toan bo database va tao lai cac bang trong.")
+        from app.seeds import seed_all
+        seed_all()
+        print(">>> Da dien xong du lieu mau moi.")
+
     @app.route('/storage/uploads/<path:filename>')
     def serve_storage_file(filename):
         # Kiểm tra nếu có tham số ?download=true thì ép tải về

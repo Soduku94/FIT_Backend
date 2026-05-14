@@ -64,9 +64,13 @@ def seed_users():
         }
     ]
     
+    print("\n--- THONG TIN 4 TAI KHOAN CO DINH ---")
     created_users = []
     
     for u_data in fixed_users:
+        password = u_data['user_code'].lower() + '123' if 'admin' not in u_data['user_code'] else 'admin123'
+        print(f"Role: {u_data['role'].value if hasattr(u_data['role'], 'value') else u_data['role']:<10} | Ten dang nhap: {u_data['user_code']:<25} | Pass: {password}")
+        
         user = User.query.filter_by(user_code=u_data['user_code']).first()
         if not user:
             user = User(
@@ -77,9 +81,10 @@ def seed_users():
                 department=u_data['dept'],
                 class_name=u_data.get('class')
             )
-            user.set_password(u_data['user_code'].lower() + '123' if 'admin' not in u_data['user_code'] else 'admin123')
+            user.set_password(password)
             db.session.add(user)
         created_users.append(user)
+    print("-------------------------------------\n")
     
     # Them Giang vien ngau nhien
     for i in range(5):
