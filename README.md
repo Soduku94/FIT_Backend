@@ -89,7 +89,10 @@ dự án chạy thì terminal sẽ in ra danh sách toàn bộ các API Route c�
 python -m flask seed-db
 
 ```
-
+hoặc có thể reset lại database rồi seed lại 
+```bash
+python -m flask reset-db
+```
 cái này để tạo ra dữ liệu ngẫu nhiên như người dùng giảng viên, sinh viên, tài liệu nghiên cứu để test thử 
 
 lưu ý các dữ liệu dump data này nó ngẫu nhiên khá là vô tri
@@ -97,9 +100,9 @@ lưu ý các dữ liệu dump data này nó ngẫu nhiên khá là vô tri
 
 tài khoản nếu dùng file seed sẽ là :
 Role: admin      | User Code: admin_fit             | Pass: admin123
-Role: editor     | User Code: ED001                 | Pass: ED001123
-Role: lecturer   | User Code: GV001                 | Pass: GV001123
-Role: student    | User Code: SV20240001            | Pass: SV20240001123
+Role: editor     | User Code: ED001                 | Pass: ed001123
+Role: lecturer   | User Code: GV001                 | Pass: gv001123
+Role: student    | User Code: 20240001              | Pass: 20240001123
  hoặc khi đăng nhập với tài khoản admin có thể tạo người dùng rồi test 
 ### lưu ý 1 chút
 lưu ý ở tính năng AI để tóm tắt tổng quan , do là dùng key fre thế nên nếu dùng quá giới hạn thì sẽ bị lỗi , không nên spam request quá nhiều sẽ dẫn tới lỗi 
