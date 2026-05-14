@@ -47,6 +47,9 @@ def create_app(config_class=Config):
     from app.routes.editor.news_routes import editor_bp
     app.register_blueprint(editor_bp)
 
+    from app.routes.client.saved_routes import saved_bp
+    app.register_blueprint(saved_bp, url_prefix='/api/client')
+
 
     # ==========================================
     # LỆNH TẠO DỮ LIỆU MẪU (CLI)

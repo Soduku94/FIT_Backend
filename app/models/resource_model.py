@@ -52,6 +52,32 @@ class Paper(db.Model):
 
 
 # ==========================================
+# 3. BẢNG TÀI LIỆU ĐÃ LƯU (SAVED RESOURCES)
+# ==========================================
+class SavedResource(db.Model):
+    __tablename__ = 'saved_resources'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    
+    # Chúng ta dùng String cho resource_id vì Paper/Dataset/News đều dùng String(36) làm ID
+    resource_id = db.Column(db.String(36), nullable=False)
+    
+    # Loại tài liệu: 'paper', 'dataset', 'news'
+    resource_type = db.Column(db.String(20), nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Đảm bảo một người dùng không lưu một tài liệu nhiều lần
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'resource_id', 'resource_type', name='_user_resource_uc'),
+    )
+
+    def __repr__(self):
+        return f"<SavedResource User:{self.user_id} Resource:{self.resource_id} Type:{self.resource_type}>"
+
+
+# ==========================================
 # 2. BẢNG BỘ DỮ LIỆU (DATASETS)
 # ==========================================
 class Dataset(db.Model):
