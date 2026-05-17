@@ -34,6 +34,9 @@ def admin_required(f):
             if not current_user or current_user.role.value != 'admin':
                 return jsonify({'message': 'Bạn không có quyền quản trị!'}), 403
 
+            if not current_user.is_active:
+                return jsonify({'message': 'Tài khoản của bạn đã bị khóa!'}), 403
+
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token đã hết hạn!'}), 401
         except Exception as e:
@@ -69,6 +72,9 @@ def token_required(f):
 
             if not current_user:
                 return jsonify({'message': 'Người dùng không tồn tại!'}), 401
+
+            if not current_user.is_active:
+                return jsonify({'message': 'Tài khoản của bạn đã bị khóa!'}), 403
 
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token đã hết hạn!'}), 401

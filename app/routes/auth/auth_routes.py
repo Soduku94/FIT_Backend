@@ -24,6 +24,9 @@ def login():
     user = User.query.filter_by(user_code=data.get('user_code')).first()
 
     if user and user.check_password(data.get('password')):
+        if not user.is_active:
+            return jsonify({"message": "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên!"}), 403
+
         # Tạo JWT Token
         token = jwt.encode({
             'user_id': user.id,
