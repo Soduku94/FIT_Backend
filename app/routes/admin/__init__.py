@@ -9,6 +9,7 @@ from . import category_routes
 from . import document_routes
 
 from . import dashboard_routes
+from . import settings_routes
 
 
 # admin_fit

@@ -41,16 +41,10 @@ def upload_document(current_user):
             return jsonify({"message": "Chưa chọn file!"}), 400
 
         if file and allowed_file(file.filename):
-            # Làm sạch tên file và thêm timestamp để không bị trùng lặp
-            filename = secure_filename(file.filename)
-            unique_filename = f"{int(time.time())}_{filename}"
-            file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
-
-            # Lưu file vào thư mục uploads
-            file.save(file_path)
-
-            # 3. Lưu thông tin vào Database (Trạng thái mặc định là 'pending')
-            file_url = f"http://127.0.0.1:5000/uploads/{unique_filename}"
+            # Lưu file thông qua StorageManager
+            from app.services.storage_service import StorageManager
+            bucket = "datasets" if doc_type == 'dataset' else "papers"
+            file_url = StorageManager.get_provider().upload_file(file, bucket_name=bucket)
 
             if doc_type == 'dataset':
                 new_doc = Dataset(

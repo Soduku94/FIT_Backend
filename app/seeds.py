@@ -6,12 +6,16 @@ from app.extensions import db
 from app.models.user_model import User, UserRole
 from app.models.news_model import News, NewsStatus
 from app.models.resource_model import Category, Paper, Dataset
+from app.models.setting_model import SystemSetting
 
 fake = Faker('vi_VN')
 
 def seed_all():
     """Chay toan bo qua trinh tao du lieu mau."""
     print("--- Bat dau qua trinh tao du lieu mau ---")
+    
+    # 0. Tao System Settings
+    seed_settings()
     
     # 1. Tao Users
     users = seed_users()
@@ -26,6 +30,27 @@ def seed_all():
     seed_resources(users, categories)
     
     print("--- Hoan thanh khoi tao du lieu mau ---")
+
+def seed_settings():
+    """Khoi tao cac cau hinh he thong mac dinh."""
+    print("- Dang tao cau hinh he thong...")
+    settings = [
+        {
+            'key': 'STORAGE_PROVIDER',
+            'value': 'local',
+            'description': 'Che do luu tru tai nguyen: "local" (cuc bo) hoac "cloud" (Supabase Cloud)'
+        }
+    ]
+    for s_data in settings:
+        setting = SystemSetting.query.filter_by(key=s_data['key']).first()
+        if not setting:
+            setting = SystemSetting(
+                key=s_data['key'],
+                value=s_data['value'],
+                description=s_data['description']
+            )
+            db.session.add(setting)
+    db.session.commit()
 
 def seed_users():
     """Tao cac tai khoan mau."""

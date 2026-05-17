@@ -19,6 +19,7 @@ def create_app(config_class=Config):
     # ==========================================
     from app.models import user_model
     from app.models import resource_model
+    from app.models import setting_model
     from app.routes.client import profile_routes
 
     # ==========================================

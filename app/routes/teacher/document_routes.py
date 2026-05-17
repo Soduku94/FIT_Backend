@@ -58,13 +58,8 @@ def upload_paper(current_user):
     if main_file.filename == '' or not allowed_file(main_file.filename, ALLOWED_PDF):
         return jsonify({"message": "File bài báo bắt buộc phải là định dạng .pdf!"}), 400
 
-    upload_dir = os.path.join(os.getcwd(), 'app', 'storage', 'uploads')
-    os.makedirs(upload_dir, exist_ok=True)
-
-    safe_main_filename = f"paper_{uuid.uuid4().hex[:8]}_{secure_filename(main_file.filename)}"
-    main_file_path = os.path.join(upload_dir, safe_main_filename)
-    main_file.save(main_file_path)
-    db_main_file_url = f"/storage/uploads/{safe_main_filename}"
+    from app.services.storage_service import StorageManager
+    db_main_file_url = StorageManager.get_provider().upload_file(main_file, bucket_name="papers")
 
     # 4. Lưu vào Database (Bảng Paper)
     new_paper = Paper(
@@ -129,14 +124,8 @@ def upload_dataset(current_user):
         file = request.files['main_file']
         if file.filename != '':
             if allowed_file(file.filename, ALLOWED_DATASETS):
-                upload_dir = os.path.join(os.getcwd(), 'app', 'storage', 'uploads')
-                os.makedirs(upload_dir, exist_ok=True)
-
-                safe_filename = f"dataset_{uuid.uuid4().hex[:8]}_{secure_filename(file.filename)}"
-                file_path = os.path.join(upload_dir, safe_filename)
-                file.save(file_path)
-
-                db_file_url = f"/storage/uploads/{safe_filename}"  # Lưu đường dẫn này vào DB
+                from app.services.storage_service import StorageManager
+                db_file_url = StorageManager.get_provider().upload_file(file, bucket_name="datasets")  # Lưu đường dẫn này vào DB
                 has_local_file = True
             else:
                 return jsonify({"message": f"Định dạng file '{file.filename}' không được hỗ trợ!"}), 400
@@ -352,17 +341,10 @@ def update_document(current_user, doc_id):
             if doc_type == 'dataset' and not allowed_file(file.filename, ALLOWED_DATASETS):
                 return jsonify({"message": "Định dạng file Dataset không được hỗ trợ!"}), 400
 
-            # Lưu file mới
-            upload_dir = os.path.join(os.getcwd(), 'app', 'storage', 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)
-
-            prefix = "paper" if doc_type == 'paper' else "dataset"
-            safe_filename = f"{prefix}_edit_{uuid.uuid4().hex[:8]}_{secure_filename(file.filename)}"
-            file_path = os.path.join(upload_dir, safe_filename)
-            file.save(file_path)
-
-            # Cập nhật đường link file mới vào DB
-            doc.file_url = f"/storage/uploads/{safe_filename}"
+            # Lưu file mới qua StorageManager
+            from app.services.storage_service import StorageManager
+            bucket = "papers" if doc_type == 'paper' else "datasets"
+            doc.file_url = StorageManager.get_provider().upload_file(file, bucket_name=bucket)
 
     # 6. Lưu vào Database
     db.session.commit()
