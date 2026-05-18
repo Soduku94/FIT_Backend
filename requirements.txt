@@ -26,5 +26,5 @@ google-genai==1.73.1
 
 gunicorn==21.2.0
 python-slugify==8.0.4
-Faker==31.7.0
-requests==2.32.5
+Faker==40.15.0
+requests==2.33.1
